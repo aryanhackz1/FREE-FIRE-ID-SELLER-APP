@@ -90,222 +90,254 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-        const firebaseConfig = {
-  apiKey: "AIzaSyDeSqkzOOHs8-nXyLmW9_ealZwGcGNbq4Q",
-  authDomain: "free-fire-id-seller-app.firebaseapp.com",
-  databaseURL: "https://free-fire-id-seller-app-default-rtdb.firebaseio.com",
-  projectId: "free-fire-id-seller-app",
-  storageBucket: "free-fire-id-seller-app.firebasestorage.app",
-  messagingSenderId: "555825293611",
-  appId: "1:555825293611:web:ea9b09923a8372d676fd6e"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyDC_2YjZT19c7ay5Y9qujg3xK6JL3H_HZY",
+        authDomain: "movie-app-84475.firebaseapp.com",
+        databaseURL: "https://movie-app-84475-default-rtdb.firebaseio.com",
+        projectId: "movie-app-84475",
+        storageBucket: "movie-app-84475.firebasestorage.app",
+        messagingSenderId: "377542758011",
+        appId: "1:377542758011:web:02ba819afc3087da30dcde"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-        const authSection = document.getElementById('auth-section');
-        const appSection = document.getElementById('app-section');
-        const userEmailEl = document.getElementById('user-email');
-        const walletBalanceEl = document.getElementById('wallet-balance');
-        const accountsContainer = document.getElementById('accounts-container');
-        const detailsModal = document.getElementById('details-modal');
+    const authSection = document.getElementById('auth-section');
+    const appSection = document.getElementById('app-section');
+    const userEmailEl = document.getElementById('user-email');
+    const walletBalanceEl = document.getElementById('wallet-balance');
+    const accountsContainer = document.getElementById('accounts-container');
+    const detailsModal = document.getElementById('details-modal');
 
-        let currentUser = null;
-        let userWallet = 0;
-        let isWalletSystemDisabled = false;
+    let currentUser = null;
+    let userWallet = 0;
+    let isWalletSystemDisabled = false;
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                authSection.classList.add('hidden');
-                appSection.classList.remove('hidden');
-                userEmailEl.textContent = user.email;
-                listenToWallet();
-                listenToSettings();
-                loadAccounts();
-            } else {
-                currentUser = null;
-                authSection.classList.remove('hidden');
-                appSection.classList.add('hidden');
-            }
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            authSection.classList.add('hidden');
+            appSection.classList.remove('hidden');
+            userEmailEl.textContent = user.email;
+            listenToWallet();
+            listenToSettings();
+            loadAccounts();
+        } else {
+            currentUser = null;
+            authSection.classList.remove('hidden');
+            appSection.classList.add('hidden');
+        }
+    });
+
+    // *** FIXED LOGIN BUTTON ***
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) {
+            alert('Please fill email and password');
+            return;
+        }
+        
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            alert('Login failed: ' + error.message);
+        }
+    });
+
+    // *** FIXED REGISTER BUTTON ***
+    document.getElementById('register-btn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) {
+            alert('Please fill email and password');
+            return;
+        }
+        
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+        }
+        
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // Create wallet for new user
+            await set(ref(db, `users/${userCredential.user.uid}/wallet`), 0);
+        } catch (error) {
+            alert('Registration failed: ' + error.message);
+        }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+    // Baki sab code same hai...
+    function listenToWallet() {
+        const userWalletRef = ref(db, `users/${currentUser.uid}/wallet`);
+        onValue(userWalletRef, (snapshot) => {
+            userWallet = snapshot.val() || 0;
+            walletBalanceEl.textContent = userWallet.toFixed(2);
         });
+    }
 
-        document.getElementById('login-btn').addEventListener('click', () => { /* ... no change ... */ });
-        document.getElementById('register-btn').addEventListener('click', () => { /* ... no change ... */ });
-        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-
-        function listenToWallet() {
-            const userWalletRef = ref(db, `users/${currentUser.uid}/wallet`);
-            onValue(userWalletRef, (snapshot) => {
-                userWallet = snapshot.val() || 0;
-                walletBalanceEl.textContent = userWallet.toFixed(2);
-            });
-        }
-
-        function listenToSettings() {
-             const settingsRef = ref(db, `settings/isWalletDisabled`);
-             onValue(settingsRef, (snapshot) => {
-                isWalletSystemDisabled = snapshot.val() === true;
-             });
-        }
-
-        function loadAccounts() {
-            const accountsRef = ref(db, 'accounts');
-            onValue(accountsRef, (snapshot) => {
-                accountsContainer.innerHTML = '';
-                const data = snapshot.val();
-                if (data) {
-                    Object.entries(data).forEach(([key, value]) => {
-                        const card = createAccountCard(key, value);
-                        accountsContainer.appendChild(card);
-                    });
-                } else {
-                    accountsContainer.innerHTML = '<p>No accounts available right now.</p>';
-                }
-            });
-        }
-
-        function createAccountCard(id, data) {
-            const card = document.createElement('div');
-            card.className = 'bg-gray-800 rounded-lg overflow-hidden shadow-lg account-card';
-            card.dataset.id = id;
-
-            // Truncate description
-            const shortDescription = data.description.split('\n')[0].substring(0, 60) + '...';
-
-            card.innerHTML = `
-                <img class="w-full h-48 object-cover" src="${data.mainImage}" alt="${data.name}">
-                <div class="p-4">
-                    <h3 class="font-bold text-xl mb-2">${data.name}</h3>
-                    <p class="text-gray-400 text-sm">${shortDescription}</p>
-                </div>
-            `;
-            return card;
-        }
-
-        // Show details modal on card click
-        accountsContainer.addEventListener('click', async (e) => {
-            const card = e.target.closest('.account-card');
-            if (card) {
-                const accountId = card.dataset.id;
-                showDetailsModal(accountId);
-            }
+    function listenToSettings() {
+        const settingsRef = ref(db, `settings/isWalletDisabled`);
+        onValue(settingsRef, (snapshot) => {
+            isWalletSystemDisabled = snapshot.val() === true;
         });
+    }
 
-        async function showDetailsModal(accountId) {
-            const accountRef = ref(db, `accounts/${accountId}`);
-            const snapshot = await get(accountRef);
-            if (!snapshot.exists()) {
-                alert("This account is no longer available.");
-                return;
-            }
+    function loadAccounts() {
+        const accountsRef = ref(db, 'accounts');
+        onValue(accountsRef, (snapshot) => {
+            accountsContainer.innerHTML = '';
             const data = snapshot.val();
-
-            // Populate Modal
-            document.getElementById('modal-title').textContent = data.name;
-            document.getElementById('modal-main-image').src = data.mainImage;
-            document.getElementById('modal-description').textContent = data.description;
-
-            // Populate other images
-            const otherImagesContainer = document.getElementById('modal-other-images');
-            otherImagesContainer.innerHTML = '';
-            if(data.otherImages && data.otherImages.length > 0) {
-                 data.otherImages.forEach(imgUrl => {
-                    const img = document.createElement('img');
-                    img.src = imgUrl;
-                    img.className = 'w-full h-32 object-cover rounded';
-                    otherImagesContainer.appendChild(img);
+            if (data) {
+                Object.entries(data).forEach(([key, value]) => {
+                    const card = createAccountCard(key, value);
+                    accountsContainer.appendChild(card);
                 });
             } else {
-                otherImagesContainer.innerHTML = '<p class="text-gray-400 col-span-full">No other images available.</p>';
+                accountsContainer.innerHTML = '<p>No accounts available right now.</p>';
             }
+        });
+    }
 
-            // Populate buttons
-            const buttonsContainer = document.getElementById('modal-buttons');
-            let buttonsHtml = `<a href="${data.contactLink}" target="_blank" class="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Contact Owner</a>`;
-            if (!isWalletSystemDisabled || userWallet > 0) {
-                 buttonsHtml += `<button data-id="${accountId}" id="modal-buy-btn" class="w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Buy Now (₹${data.price})</button>`;
-            }
-            buttonsContainer.innerHTML = buttonsHtml;
-            
-            detailsModal.style.display = 'block';
+    function createAccountCard(id, data) {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-800 rounded-lg overflow-hidden shadow-lg account-card';
+        card.dataset.id = id;
+
+        const shortDescription = data.description.split('\n')[0].substring(0, 60) + '...';
+
+        card.innerHTML = `
+            <img class="w-full h-48 object-cover" src="${data.mainImage}" alt="${data.name}">
+            <div class="p-4">
+                <h3 class="font-bold text-xl mb-2">${data.name}</h3>
+                <p class="text-gray-400 text-sm">${shortDescription}</p>
+            </div>
+        `;
+        return card;
+    }
+
+    accountsContainer.addEventListener('click', async (e) => {
+        const card = e.target.closest('.account-card');
+        if (card) {
+            const accountId = card.dataset.id;
+            showDetailsModal(accountId);
+        }
+    });
+
+    async function showDetailsModal(accountId) {
+        const accountRef = ref(db, `accounts/${accountId}`);
+        const snapshot = await get(accountRef);
+        if (!snapshot.exists()) {
+            alert("This account is no longer available.");
+            return;
+        }
+        const data = snapshot.val();
+
+        document.getElementById('modal-title').textContent = data.name;
+        document.getElementById('modal-main-image').src = data.mainImage;
+        document.getElementById('modal-description').textContent = data.description;
+
+        const otherImagesContainer = document.getElementById('modal-other-images');
+        otherImagesContainer.innerHTML = '';
+        if(data.otherImages && data.otherImages.length > 0) {
+            data.otherImages.forEach(imgUrl => {
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.className = 'w-full h-32 object-cover rounded';
+                otherImagesContainer.appendChild(img);
+            });
+        } else {
+            otherImagesContainer.innerHTML = '<p class="text-gray-400 col-span-full">No other images available.</p>';
         }
 
-        // Handle buy from modal
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'modal-buy-btn') {
-                const accountId = e.target.dataset.id;
-                handleBuy(accountId);
-            }
-        });
+        const buttonsContainer = document.getElementById('modal-buttons');
+        let buttonsHtml = `<a href="${data.contactLink}" target="_blank" class="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Contact Owner</a>`;
+        if (!isWalletSystemDisabled || userWallet > 0) {
+            buttonsHtml += `<button data-id="${accountId}" id="modal-buy-btn" class="w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Buy Now (₹${data.price})</button>`;
+        }
+        buttonsContainer.innerHTML = buttonsHtml;
+        
+        detailsModal.style.display = 'block';
+    }
 
-        async function handleBuy(accountId) {
-            if (!confirm("Are you sure you want to buy this account?")) return;
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'modal-buy-btn') {
+            const accountId = e.target.dataset.id;
+            handleBuy(accountId);
+        }
+    });
 
-            const accountRef = ref(db, `accounts/${accountId}`);
-            const accountSnapshot = await get(accountRef);
-            if (!accountSnapshot.exists()) {
-                alert("This account is no longer available.");
-                return;
-            }
-            const accountData = accountSnapshot.val();
+    async function handleBuy(accountId) {
+        if (!confirm("Are you sure you want to buy this account?")) return;
 
-            if (userWallet < accountData.price) {
-                alert("Insufficient balance in your wallet. Please deposit first.");
-                return;
-            }
+        const accountRef = ref(db, `accounts/${accountId}`);
+        const accountSnapshot = await get(accountRef);
+        if (!accountSnapshot.exists()) {
+            alert("This account is no longer available.");
+            return;
+        }
+        const accountData = accountSnapshot.val();
 
-            const newBalance = userWallet - accountData.price;
-            await set(ref(db, `users/${currentUser.uid}/wallet`), newBalance);
-            await remove(accountRef);
-
-            // Hide details modal and show credentials modal
-            detailsModal.style.display = 'none';
-            document.getElementById('purchased-id').textContent = accountData.ffId;
-            document.getElementById('purchased-pass').textContent = accountData.ffPassword;
-            document.getElementById('credentials-modal').style.display = 'block';
+        if (userWallet < accountData.price) {
+            alert("Insufficient balance in your wallet. Please deposit first.");
+            return;
         }
 
-        // Deposit Logic (No changes needed here)
-        document.getElementById('deposit-btn').addEventListener('click', () => {
-            document.getElementById('deposit-modal').style.display = 'block';
-        });
+        const newBalance = userWallet - accountData.price;
+        await set(ref(db, `users/${currentUser.uid}/wallet`), newBalance);
+        await remove(accountRef);
 
-        document.getElementById('submit-deposit-btn').addEventListener('click', () => {
-            const name = document.getElementById('payer-name').value;
-            const utr = document.getElementById('utr-id').value;
-            const amount = parseFloat(document.getElementById('deposit-amount').value);
+        detailsModal.style.display = 'none';
+        document.getElementById('purchased-id').textContent = accountData.ffId;
+        document.getElementById('purchased-pass').textContent = accountData.ffPassword;
+        document.getElementById('credentials-modal').style.display = 'block';
+    }
 
-            if (!name || !utr || !amount || amount <= 0) {
-                alert('Please fill all fields correctly.');
-                return;
-            }
+    document.getElementById('deposit-btn').addEventListener('click', () => {
+        document.getElementById('deposit-modal').style.display = 'block';
+    });
 
-            const requestId = `req_${Date.now()}`;
-            const requestRef = ref(db, `depositRequests/${requestId}`);
-            set(requestRef, {
-                userId: currentUser.uid,
-                userEmail: currentUser.email,
-                payerName: name,
-                utr: utr,
-                amount: amount,
-                timestamp: new Date().toISOString()
-            }).then(() => {
-                alert('Deposit request sent! It will be reviewed by the admin.');
-                document.getElementById('deposit-modal').style.display = 'none';
-                document.getElementById('payer-name').value = '';
-                document.getElementById('utr-id').value = '';
-                document.getElementById('deposit-amount').value = '';
-            }).catch(err => alert(err.message));
-        });
+    document.getElementById('submit-deposit-btn').addEventListener('click', () => {
+        const name = document.getElementById('payer-name').value;
+        const utr = document.getElementById('utr-id').value;
+        const amount = parseFloat(document.getElementById('deposit-amount').value);
 
-    </script>
+        if (!name || !utr || !amount || amount <= 0) {
+            alert('Please fill all fields correctly.');
+            return;
+        }
+
+        const requestId = `req_${Date.now()}`;
+        const requestRef = ref(db, `depositRequests/${requestId}`);
+        set(requestRef, {
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            payerName: name,
+            utr: utr,
+            amount: amount,
+            timestamp: new Date().toISOString()
+        }).then(() => {
+            alert('Deposit request sent! It will be reviewed by the admin.');
+            document.getElementById('deposit-modal').style.display = 'none';
+            document.getElementById('payer-name').value = '';
+            document.getElementById('utr-id').value = '';
+            document.getElementById('deposit-amount').value = '';
+        }).catch(err => alert(err.message));
+    });
+</script>
 </body>
 
 </html>
+
 
